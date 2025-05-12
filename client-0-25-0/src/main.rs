@@ -48,14 +48,14 @@ async fn main() {
 
     //total time should be the same no matter how many clients we spawn
     tracing::info!(
-        "Total time taken {:#?} with {N_CLIENTS} concurrent clients, should be about 6.5 to 8 seconds.",
+        "Total time taken {:#?} with {N_CLIENTS} concurrent clients, should be about 37 to 40 seconds.",
         end_time - start_time
     );
 }
 
 //creates a client. quietly exits on failure.
 async fn spawn_client(who: usize) {
-    let websocket_config = WebSocketConfig::default().max_message_size(None).max_frame_size(None).read_buffer_size(1024 * 1024);
+    let websocket_config = WebSocketConfig::default().max_message_size(None).max_frame_size(None);
     let ws_stream = match connect_async_with_config(SERVER, Some(websocket_config), false).await {
         Ok((stream, response)) => {
             tracing::info!("Handshake for client {who} has been completed");
