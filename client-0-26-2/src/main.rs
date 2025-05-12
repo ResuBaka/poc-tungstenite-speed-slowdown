@@ -112,11 +112,12 @@ async fn spawn_client(who: usize) {
 
     //receiver just prints whatever it gets
     let mut recv_task = tokio::spawn(async move {
+        let mut start = Instant::now();
         while let Some(msg) = receiver.next().await {
             // print message and break if instructed to do so
 
             if let Ok(msg) = msg {
-                if process_message(msg, who).is_break() {
+                if process_message(msg, who, &mut start).is_break() {
                     break;
                 }
             } else if let Err(e) = msg {
@@ -139,13 +140,15 @@ async fn spawn_client(who: usize) {
 
 /// Function to handle messages we get (with a slight twist that Frame variant is visible
 /// since we are working with the underlying tungstenite library directly without axum here).
-fn process_message(msg: Message, who: usize) -> ControlFlow<(), ()> {
+fn process_message(msg: Message, who: usize, last_text_message: &mut Instant) -> ControlFlow<(), ()> {
     match msg {
         Message::Text(t) => {
             tracing::info!(">>> {who} got str: {t:?}");
+            *last_text_message = Instant::now();
         }
         Message::Binary(d) => {
-            tracing::info!(">>> {} got {} bytes", who, d.len());
+            tracing::info!(">>> {} got {} bytes since last text message {:#?}", who, d.len(), last_text_message.elapsed());
+
         }
         Message::Close(c) => {
             if let Some(cf) = c {
