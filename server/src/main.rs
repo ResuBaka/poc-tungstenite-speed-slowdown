@@ -120,8 +120,16 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
 
     // Spawn a task that will push several messages to the client (does not matter what client does)
     let mut send_task = tokio::spawn(async move {
-        let n_msg: [usize; 3] = [
+        let n_msg: [usize; 11] = [
+            1,
+            3,
+            6,
             10,
+            20,
+            30,
+            40,
+            50,
+            60,
             100,
             1000,
         ];

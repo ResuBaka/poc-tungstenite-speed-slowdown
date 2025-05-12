@@ -13,10 +13,10 @@
 use futures_util::stream::FuturesUnordered;
 use futures_util::{SinkExt, StreamExt};
 use std::ops::ControlFlow;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 // we will use tungstenite for websocket client impl (same library as what axum is using)
-use tokio_tungstenite::{connect_async, connect_async_with_config, tungstenite::protocol::{frame::coding::CloseCode, CloseFrame, Message}};
+use tokio_tungstenite::{connect_async_with_config, tungstenite::protocol::{Message}};
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -145,12 +145,14 @@ async fn spawn_client(who: usize) {
 /// since we are working with the underlying tungstenite library directly without axum here).
 fn process_message(msg: Message, who: usize, last_text_message: &mut Instant) -> ControlFlow<(), ()> {
     match msg {
-        Message::Text(t) => {
-            tracing::info!(">>> {who} got str: {t:?}");
+        Message::Text(_t) => {
+            // tracing::info!(">>> {who} got str: {t:?}");
             *last_text_message = Instant::now();
         }
         Message::Binary(d) => {
-            tracing::info!(">>> {} got {} bytes since last text message {:#?}", who, d.len(), last_text_message.elapsed());
+            let elapsed = last_text_message.elapsed();
+
+            println!(">>> {} took ~{:#?} with speed ~{}", human_readable_bytes(d.len()), elapsed, human_readable_speed(d.len(), elapsed));
 
         }
         Message::Close(c) => {
@@ -180,4 +182,42 @@ fn process_message(msg: Message, who: usize, last_text_message: &mut Instant) ->
         }
     }
     ControlFlow::Continue(())
+}
+
+fn human_readable_bytes(num_bytes: usize) -> String {
+    if num_bytes == 0 {
+        return "0 Bytes".to_string();
+    }
+
+    let units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    let mut size = num_bytes as f64;
+    let mut i = 0;
+
+    while size >= 1024.0 && i < units.len() - 1 {
+        size /= 1024.0;
+        i += 1;
+    }
+
+    format!("{:.1} {}", size, units[i])
+}
+
+fn human_readable_speed(bytes: usize, elapsed_time: Duration) -> String {
+    let elapsed_seconds = elapsed_time.as_secs_f64();
+
+    if elapsed_seconds == 0.0 {
+        return "0 Bytes/s".to_string();
+    }
+
+    let bytes_per_second = bytes as f64 / elapsed_seconds;
+
+    let units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    let mut size = bytes_per_second;
+    let mut i = 0;
+
+    while size >= 1024.0 && i < units.len() - 1 {
+        size /= 1024.0;
+        i += 1;
+    }
+
+    format!("{:.1} {}/s", size, units[i])
 }
